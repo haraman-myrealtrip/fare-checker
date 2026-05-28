@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운임 자동 조회 도구 - SELLCONNECT (1A)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;background:#080c18;color:#c8cdd8;min-height:100vh;overflow-x:hidden;}
+
+  /* Header */
+  .header{background:linear-gradient(135deg,#0d1529,#131b33,#0d1529);padding:18px 32px;border-bottom:1px solid #1e2a4a;position:relative;}
+  .header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#2563eb,#7c3aed,#ec4899,#f59e0b,#2563eb);background-size:200% 100%;animation:shimmer 3s linear infinite;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .header h1{font-size:17px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;}
+  .header p{font-size:11px;color:#4a5578;margin-top:3px;}
+
+  /* Stepper */
+  .stepper{display:flex;align-items:center;background:#0b1020;border-bottom:1px solid #151d35;padding:0 32px;gap:0;}
+  .step-item{flex:1;display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;transition:all .2s;position:relative;border-bottom:2px solid transparent;}
+  .step-item.active{border-bottom-color:#3b82f6;background:#0d1428;}
+  .step-item.done{border-bottom-color:#059669;}
+  .step-item.locked{opacity:.35;pointer-events:none;}
+  .step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#252e48;flex-shrink:0;transition:background .2s;}
+  .step-item.active .step-num{background:#2563eb;}
+  .step-item.done .step-num{background:#059669;}
+  .step-label{font-size:12px;font-weight:600;color:#5a6580;}
+  .step-item.active .step-label{color:#93c5fd;}
+  .step-item.done .step-label{color:#6ee7b7;}
+  .step-arrow{color:#252e48;font-size:16px;flex-shrink:0;padding:0 4px;}
+
+  /* Panels */
+  .panel{display:none;padding:28px 32px;max-width:960px;margin:0 auto;}
+  .panel.visible{display:block;}
+
+  /* Form styles */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-grid-3{display:grid;grid-template-columns:5fr 5fr 3fr;gap:14px;}
+  .form-group{margin-bottom:0;}
+  label{display:block;font-size:10px;font-weight:600;color:#4a5578;margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;}
+  input,select{width:100%;padding:9px 12px;background:#131a2e;border:1px solid #1e2a4a;border-radius:6px;color:#e2e8f0;font-size:13px;font-family:'Inter',sans-serif;outline:none;transition:border .2s;}
+  input:focus,select:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.12);}
+  input::placeholder{color:#2a3350;}
+  select{cursor:pointer;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%234a5578' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+  input[type="date"]{cursor:pointer;}
+  input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.35);cursor:pointer;}
+  .note-text{font-size:10px;color:#2a3350;margin-top:3px;}
+
+  .btn{padding:10px 20px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Inter',sans-serif;}
+  .btn:hover{transform:translateY(-1px);}
+  .btn-blue{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;width:100%;}
+  .btn-blue:hover{box-shadow:0 4px 16px rgba(37,99,235,.3);}
+  .btn-green{background:linear-gradient(135deg,#059669,#10b981);color:#fff;}
+  .btn-green:hover{box-shadow:0 4px 16px rgba(16,185,129,.3);}
+  .btn-outline{background:transparent;border:1px solid #252e48;color:#8b95b0;}
+  .btn-outline:hover{background:#131a2e;border-color:#3b82f6;color:#93c5fd;}
+
+  .hidden{display:none!important;}
+
+  /* Panel 2: Entry review */
+  .review-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:800px){.review-layout{grid-template-columns:1fr;}}
+  .review-list{background:#0b1020;border:1px solid #151d35;border-radius:8px;padding:4px 0;max-height:520px;overflow-y:auto;}
+  .rv-section{padding:8px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#3b82f6;border-top:1px solid #151d35;}
+  .rv-section:first-child{border-top:none;}
+  .rv-section.fare{color:#a78bfa;}
+  .rv-section.cancel{color:#f87171;}
+  .rv-item{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;transition:background .1s;}
+  .rv-item:hover{background:#111728;}
+  .rv-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;}
+  .rv-num.b{background:#2563eb;}.rv-num.p{background:#7c3aed;}.rv-num.r{background:#dc2626;}.rv-num.g{background:#334155;opacity:.5;}
+  .rv-info{flex:1;min-width:0;}
+  .rv-label{font-size:10px;color:#4a5578;}
+  .rv-cmd{font-family:'JetBrains Mono',monospace;font-size:12px;color:#60a5fa;font-weight:500;}
+  .rv-item.cancel .rv-cmd{color:#f87171;}
+  .rv-item.alt{opacity:.4;}
+  .rv-note{font-size:9px;color:#2a3350;margin-top:1px;}
+
+  .review-summary{background:#0b1020;border:1px solid #151d35;border-radius:8px;padding:20px;}
+  .summary-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #111728;font-size:13px;}
+  .summary-row:last-child{border-bottom:none;}
+  .summary-label{color:#4a5578;}
+  .summary-value{color:#e2e8f0;font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px;}
+
+  /* Panel 3: Login */
+  .login-card{background:#0b1020;border:1px solid #151d35;border-radius:12px;padding:40px;text-align:center;max-width:500px;margin:0 auto;}
+  .login-card .icon{font-size:48px;margin-bottom:16px;}
+  .login-card h3{font-size:18px;color:#fff;margin-bottom:8px;}
+  .login-card p{font-size:13px;color:#5a6580;margin-bottom:24px;line-height:1.6;}
+  .login-status{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;margin-top:16px;}
+  .login-status.waiting{background:#1a1303;color:#fcd34d;border:1px solid #78350f;}
+  .login-status.ready{background:#021a0b;color:#6ee7b7;border:1px solid #064e3b;}
+
+  /* Panel 4: Execution */
+  .exec-container{max-width:700px;margin:0 auto;}
+  .exec-progress{display:flex;align-items:center;gap:4px;margin-bottom:24px;}
+  .exec-dot{height:6px;flex:1;border-radius:3px;background:#151d35;transition:background .3s;}
+  .exec-dot.done{background:#059669;}
+  .exec-dot.current{background:#3b82f6;animation:pulse 1.5s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+  .exec-current{background:#0b1020;border:1px solid #1e2a4a;border-radius:12px;padding:32px;text-align:center;margin-bottom:20px;position:relative;overflow:hidden;}
+  .exec-current::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,#7c3aed);border-radius:3px 3px 0 0;}
+  .exec-current.cancel-phase::before{background:linear-gradient(90deg,#dc2626,#f87171);}
+  .exec-step-label{font-size:11px;color:#4a5578;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+  .exec-step-num{font-size:12px;color:#3b82f6;font-weight:700;margin-bottom:12px;}
+  .exec-cmd{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:#60a5fa;margin-bottom:6px;letter-spacing:1px;word-break:break-all;}
+  .exec-current.cancel-phase .exec-cmd{color:#f87171;}
+  .exec-desc{font-size:12px;color:#4a5578;margin-bottom:20px;}
+
+  .exec-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+  .exec-actions .btn{min-width:160px;}
+
+  .exec-copied{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#059669;color:#fff;padding:8px 24px;border-radius:8px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .exec-copied.show{opacity:1;}
+
+  .exec-queue{margin-top:20px;}
+  .exec-queue-title{font-size:11px;color:#2a3350;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;}
+  .eq-item{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:11px;border-radius:4px;margin-bottom:2px;}
+  .eq-item.done{color:#059669;text-decoration:line-through;opacity:.4;}
+  .eq-item.current{color:#60a5fa;background:#0d1428;font-weight:600;}
+  .eq-item.pending{color:#2a3350;}
+  .eq-num{width:18px;text-align:center;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:10px;}
+  .eq-cmd{font-family:'JetBrains Mono',monospace;}
+
+  .exec-complete{text-align:center;padding:40px;}
+  .exec-complete .icon{font-size:48px;margin-bottom:16px;}
+  .exec-complete h3{font-size:20px;color:#6ee7b7;margin-bottom:8px;}
+  .exec-complete p{font-size:13px;color:#5a6580;}
+
+  .shortcut-hint{font-size:11px;color:#2a3350;text-align:center;margin-top:16px;}
+  .shortcut-hint kbd{background:#151d35;border:1px solid #252e48;border-radius:4px;padding:2px 6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a6580;}
+
+  /* Alerts */
+  .alerts{padding:20px 32px;max-width:960px;margin:0 auto;}
+  .alert-bar{padding:10px 14px;border-radius:6px;font-size:11px;display:flex;align-items:center;gap:8px;margin-bottom:6px;line-height:1.5;}
+  .alert-red{background:#1c0a0a;border:1px solid #7f1d1d;color:#fca5a5;}
+  .alert-amber{background:#1a1303;border:1px solid #78350f;color:#fcd34d;}
+  .alert-green{background:#021a0b;border:1px solid #064e3b;color:#6ee7b7;}
+  .alert-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .alert-dot.r{background:#dc2626;}.alert-dot.a{background:#d97706;}.alert-dot.g{background:#059669;}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>&#9992; 운임 자동 조회 도구 - SELLCONNECT (1A)</h1>
+  <p>조건 입력 &rarr; 엔트리 생성 &rarr; SellConnect 로그인 &rarr; 자동 조회 실행</p>
+</div>
+
+<!-- Stepper -->
+<div class="stepper">
+  <div class="step-item active" id="s1" onclick="goStep(1)">
+    <span class="step-num">1</span><span class="step-label">조건 입력</span>
+  </div>
+  <span class="step-arrow">&rsaquo;</span>
+  <div class="step-item locked" id="s2" onclick="goStep(2)">
+    <span class="step-num">2</span><span class="step-label">엔트리 확인</span>
+  </div>
+  <span class="step-arrow">&rsaquo;</span>
+  <div class="step-item locked" id="s3" onclick="goStep(3)">
+    <span class="step-num">3</span><span class="step-label">SellConnect 연동</span>
+  </div>
+  <span class="step-arrow">&rsaquo;</span>
+  <div class="step-item locked" id="s4" onclick="goStep(4)">
+    <span class="step-num">4</span><span class="step-label">자동 조회 실행</span>
+  </div>
+</div>
+
+<!-- STEP 1: Input -->
+<div class="panel visible" id="p1">
+  <div style="max-width:560px;margin:0 auto;">
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div><label>항공사 (2-letter code)</label><input type="text" id="airline" placeholder="LO" maxlength="2" style="text-transform:uppercase;"></div>
+      <div><label>편도 / 왕복</label>
+        <select id="tripType" onchange="toggleReturn()">
+          <option value="RT">왕복 (Round Trip)</option>
+          <option value="OW">편도 (One Way)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div><label>출발지 (3-letter)</label><input type="text" id="origin" placeholder="ICN" maxlength="3" style="text-transform:uppercase;" value="ICN"></div>
+      <div><label>도착지 (3-letter)</label><input type="text" id="dest" placeholder="WAW" maxlength="3" style="text-transform:uppercase;"></div>
+    </div>
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div><label>출발일</label><input type="date" id="depDate"></div>
+      <div id="retDateWrap"><label>귀국일</label><input type="date" id="retDate"></div>
+    </div>
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div><label>Booking class (1순위)</label><input type="text" id="cls1" placeholder="E" maxlength="1" style="text-transform:uppercase;"></div>
+      <div><label>Booking class (2순위, 선택)</label><input type="text" id="cls2" placeholder="K" maxlength="1" style="text-transform:uppercase;"></div>
+    </div>
+    <div class="form-grid-3" style="margin-bottom:14px;">
+      <div><label>성 (Last name)</label><input type="text" id="lname" placeholder="AN" style="text-transform:uppercase;"></div>
+      <div><label>이름 (First name)</label><input type="text" id="fname" placeholder="HARAM" style="text-transform:uppercase;"></div>
+      <div><label>성별</label><select id="title"><option value="MS">MS</option><option value="MR">MR</option></select></div>
+    </div>
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div><label>핸드폰 번호</label><input type="text" id="phone" placeholder="821040637407"></div>
+      <div><label>Account code</label><input type="text" id="acctCode" placeholder="없으면 비워두세요" style="text-transform:uppercase;">
+        <div class="note-text">있으면 FXP/R,날짜,U*코드 / 없으면 FXP/R,날짜,UP</div>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-bottom:20px;">
+      <div><label>미래 발권일 (NEGO용)</label><input type="date" id="negoDate">
+        <div class="note-text">NEGO 조회 시 적용할 미래 발권일 (기본: 내일)</div>
+      </div>
+      <div></div>
+    </div>
+    <button class="btn btn-blue" onclick="doGenerate()">엔트리 생성 &rarr;</button>
+  </div>
+</div>
+
+<!-- STEP 2: Review -->
+<div class="panel" id="p2">
+  <div class="review-layout">
+    <div>
+      <div style="font-size:12px;font-weight:600;color:#5a6580;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;">생성된 엔트리</div>
+      <div class="review-list" id="reviewList"></div>
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:600;color:#5a6580;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;">조회 요약</div>
+      <div class="review-summary" id="reviewSummary"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-outline" onclick="goStep(1)" style="flex:1;">&#8592; 수정</button>
+        <button class="btn btn-blue" onclick="goStep(3)" style="flex:2;">SellConnect 연동 &rarr;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: Login -->
+<div class="panel" id="p3">
+  <div class="login-card">
+    <div class="icon">&#127760;</div>
+    <h3>Topas SellConnect 로그인</h3>
+    <p>아래 버튼을 눌러 SellConnect를 새 창에서 열고,<br>로그인을 완료한 후 "로그인 완료" 버튼을 눌러주세요.</p>
+    <button class="btn btn-blue" onclick="openTopas()" style="max-width:320px;margin:0 auto;">
+      &#128640; SellConnect 열기
+    </button>
+    <div style="margin-top:24px;">
+      <div class="login-status waiting" id="loginStatus">
+        &#9679; SellConnect 로그인 대기 중
+      </div>
+    </div>
+    <div style="margin-top:24px;">
+      <button class="btn btn-green" onclick="confirmLogin()" style="max-width:320px;margin:0 auto;">
+        &#10004; 로그인 완료 &mdash; 조회 시작 &rarr;
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 4: Execution -->
+<div class="panel" id="p4">
+  <div class="exec-container" id="execContainer"></div>
+</div>
+
+<!-- Alerts (always visible) -->
+<div class="alerts" id="alertsArea">
+  <div class="alert-bar alert-red"><span class="alert-dot r"></span>반드시 <strong>TTE/ALL &rarr; XI &rarr; ER</strong> 순서로 PNR을 캔슬하세요. 미캔슬 시 항공사 패널티 발생!</div>
+  <div class="alert-bar alert-amber"><span class="alert-dot a"></span>복편 좌석 지정 시 AN 결과의 라인번호를 확인하세요. 왕복 조회 시 복편이 11번일 수 있습니다.</div>
+  <div class="alert-bar alert-green"><span class="alert-dot g"></span>SellConnect 터미널에서 붙여넣기(Ctrl+V) 후 Enter로 실행합니다.</div>
+</div>
+
+<script>
+const MS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+let entries=[], execIdx=0, currentStep=1;
+
+(function init(){
+  const d=new Date();d.setDate(d.getDate()+30);
+  document.getElementById('depDate').value=d.toISOString().split('T')[0];
+  const r=new Date(d);r.setDate(r.getDate()+3);
+  document.getElementById('retDate').value=r.toISOString().split('T')[0];
+  const tm=new Date();tm.setDate(tm.getDate()+1);
+  document.getElementById('negoDate').value=tm.toISOString().split('T')[0];
+})();
+
+function toggleReturn(){document.getElementById('retDateWrap').style.display=document.getElementById('tripType').value==='OW'?'none':'';}
+function fd(s){if(!s)return'';const d=new Date(s);return String(d.getDate()).padStart(2,'0')+MS[d.getMonth()];}
+function fdf(s){if(!s)return'';const d=new Date(s);return String(d.getDate()).padStart(2,'0')+MS[d.getMonth()]+String(d.getFullYear()).slice(-2);}
+
+function goStep(n){
+  if(n>1&&entries.length===0)return;
+  currentStep=n;
+  for(let i=1;i<=4;i++){
+    document.getElementById('p'+i).classList.toggle('visible',i===n);
+    const si=document.getElementById('s'+i);
+    si.classList.remove('active','done','locked');
+    if(i<n)si.classList.add('done');
+    else if(i===n)si.classList.add('active');
+    else if(i>n&&entries.length===0)si.classList.add('locked');
+  }
+  if(n===4)startExec();
+}
+
+function doGenerate(){
+  const v={
+    al:document.getElementById('airline').value.toUpperCase().trim(),
+    trip:document.getElementById('tripType').value,
+    ori:document.getElementById('origin').value.toUpperCase().trim(),
+    dst:document.getElementById('dest').value.toUpperCase().trim(),
+    dep:document.getElementById('depDate').value,
+    ret:document.getElementById('retDate').value,
+    c1:document.getElementById('cls1').value.toUpperCase().trim(),
+    c2:document.getElementById('cls2').value.toUpperCase().trim(),
+    ln:document.getElementById('lname').value.toUpperCase().trim(),
+    fn:document.getElementById('fname').value.toUpperCase().trim(),
+    ti:document.getElementById('title').value,
+    ph:document.getElementById('phone').value.replace(/[^0-9]/g,''),
+    ac:document.getElementById('acctCode').value.trim().toUpperCase(),
+    nd:document.getElementById('negoDate').value
+  };
+  if(!v.al||!v.ori||!v.dst||!v.dep||!v.c1||!v.ln||!v.fn||!v.ph){alert('필수 항목을 모두 입력해주세요.');return;}
+  if(v.trip==='RT'&&!v.ret){alert('왕복 선택 시 귀국일을 입력해주세요.');return;}
+  if(!v.nd){alert('미래 발권일을 입력해주세요.');return;}
+
+  const depF=fd(v.dep),retF=v.trip==='RT'?fd(v.ret):'',ndF=fdf(v.nd);
+  entries=[];let s=1;
+
+  let an='AN'+depF+v.ori+v.dst+'/A'+v.al;
+  if(v.trip==='RT')an+='*'+retF;
+  entries.push({s:s++,l:'스케줄 조회',c:an,g:'pnr',color:'b'});
+  entries.push({s:s++,l:'가편 좌석 ('+v.c1+')',c:'SS1'+v.c1+'1',g:'pnr',color:'b',note:'라인 1번 기준'});
+  if(v.trip==='RT')entries.push({s:s++,l:'복편 좌석 ('+v.c1+')',c:'SS1'+v.c1+'11',g:'pnr',color:'b',note:'복편 라인 확인'});
+  if(v.c2){
+    entries.push({s:'-',l:'[대안] '+v.c2+' 가편',c:'SS1'+v.c2+'1',g:'pnr',color:'g',alt:true});
+    if(v.trip==='RT')entries.push({s:'-',l:'[대안] '+v.c2+' 복편',c:'SS1'+v.c2+'11',g:'pnr',color:'g',alt:true});
+  }
+  entries.push({s:s++,l:'이름',c:'NM1'+v.ln+'/'+v.fn+','+v.ti,g:'pnr',color:'b'});
+  entries.push({s:s++,l:'APM',c:'APM-'+v.ph,g:'pnr',color:'b'});
+  entries.push({s:s++,l:'CTCM',c:'SR CTCM-'+v.ph,g:'pnr',color:'b'});
+  entries.push({s:s++,l:'저장',c:'ER',g:'pnr',color:'b'});
+  entries.push({s:s++,l:'공시 운임',c:'FXP',g:'fare',color:'p'});
+  if(v.ac){
+    entries.push({s:s++,l:'NEGO (A/C: '+v.ac+')',c:'FXP/R,'+ndF+',U*'+v.ac,g:'fare',color:'p',note:v.ac+' / '+ndF});
+  }else{
+    entries.push({s:s++,l:'NEGO (A/C 없음)',c:'FXP/R,'+ndF+',UP',g:'fare',color:'p',note:'A/C 없음 / '+ndF});
+  }
+  entries.push({s:s++,l:'TST 삭제',c:'TTE/ALL',g:'cancel',color:'r',cancel:true});
+  entries.push({s:s++,l:'전 구간 캔슬',c:'XI',g:'cancel',color:'r',cancel:true});
+  entries.push({s:s++,l:'캔슬 저장',c:'ER',g:'cancel',color:'r',cancel:true});
+
+  renderReview(v);
+  goStep(2);
+}
+
+function renderReview(v){
+  let h='',lastG='';
+  const gLabels={pnr:'PNR 생성',fare:'운임 조회',cancel:'PNR 캔슬'};
+  const gClass={pnr:'',fare:'fare',cancel:'cancel'};
+  entries.forEach(e=>{
+    if(e.g!==lastG){h+='<div class="rv-section '+gClass[e.g]+'">'+gLabels[e.g]+'</div>';lastG=e.g;}
+    const cls=(e.cancel?' cancel':'')+(e.alt?' alt':'');
+    h+='<div class="rv-item'+cls+'">';
+    h+='<span class="rv-num '+e.color+'">'+e.s+'</span>';
+    h+='<div class="rv-info"><div class="rv-label">'+e.l+'</div><div class="rv-cmd">'+e.c+'</div>';
+    if(e.note)h+='<div class="rv-note">'+e.note+'</div>';
+    h+='</div></div>';
+  });
+  document.getElementById('reviewList').innerHTML=h;
+
+  const tripLabel=v.trip==='RT'?'왕복':'편도';
+  const dateStr=v.trip==='RT'?(v.dep+' ~ '+v.ret):v.dep;
+  const negoCmd=entries.find(e=>e.g==='fare'&&e.l.includes('NEGO'));
+  let sh='';
+  sh+='<div class="summary-row"><span class="summary-label">항공사</span><span class="summary-value">'+v.al+'</span></div>';
+  sh+='<div class="summary-row"><span class="summary-label">구간</span><span class="summary-value">'+v.ori+' → '+v.dst+' ('+tripLabel+')</span></div>';
+  sh+='<div class="summary-row"><span class="summary-label">일정</span><span class="summary-value">'+dateStr+'</span></div>';
+  sh+='<div class="summary-row"><span class="summary-label">클래스</span><span class="summary-value">'+v.c1+(v.c2?' / '+v.c2:'')+'</span></div>';
+  sh+='<div class="summary-row"><span class="summary-label">예약자</span><span class="summary-value">'+v.fn+' '+v.ln+' ('+v.ti+')</span></div>';
+  sh+='<div class="summary-row"><span class="summary-label">NEGO 지시어</span><span class="summary-value" style="color:#a78bfa;">'+negoCmd.c+'</span></div>';
+  sh+='<div class="summary-row"><span class="summary-label">총 엔트리</span><span class="summary-value">'+entries.filter(e=>!e.alt).length+'개</span></div>';
+  document.getElementById('reviewSummary').innerHTML=sh;
+}
+
+function openTopas(){
+  window.open('https://www.topassellconnect.com/app_sell2.0/apf/init/login?SITE=MBGPMBGP&LANGUAGE=KO&e=j','_blank');
+  const st=document.getElementById('loginStatus');
+  st.className='login-status waiting';
+  st.innerHTML='&#9679; SellConnect 창이 열렸습니다. 로그인해주세요.';
+}
+
+function confirmLogin(){
+  const st=document.getElementById('loginStatus');
+  st.className='login-status ready';
+  st.innerHTML='&#10004; 로그인 확인 완료';
+  setTimeout(()=>goStep(4),600);
+}
+
+function startExec(){
+  execIdx=0;
+  renderExec();
+}
+
+function renderExec(){
+  const real=entries.filter(e=>!e.alt);
+  if(execIdx>=real.length){
+    document.getElementById('execContainer').innerHTML=
+      '<div class="exec-complete"><div class="icon">&#10004;</div><h3>조회 완료!</h3>'+
+      '<p>모든 엔트리가 실행되었습니다. SellConnect에서 결과를 확인하세요.</p>'+
+      '<button class="btn btn-outline" onclick="goStep(1)" style="max-width:240px;margin:16px auto 0;">&#8634; 새 조회</button></div>';
+    return;
+  }
+
+  const cur=real[execIdx];
+  const isCancel=cur.cancel;
+  let h='';
+
+  h+='<div class="exec-progress">';
+  real.forEach((_,i)=>{
+    let cls='exec-dot';
+    if(i<execIdx)cls+=' done';
+    else if(i===execIdx)cls+=' current';
+    h+='<div class="'+cls+'"></div>';
+  });
+  h+='</div>';
+
+  h+='<div class="exec-current'+(isCancel?' cancel-phase':'')+'">';
+  h+='<div class="exec-step-num">STEP '+cur.s+' / '+real.length+'</div>';
+  h+='<div class="exec-step-label">'+cur.l+'</div>';
+  h+='<div class="exec-cmd" id="execCmdText">'+cur.c+'</div>';
+  if(cur.note)h+='<div class="exec-desc">'+cur.note+'</div>';
+  h+='<div class="exec-actions">';
+  h+='<button class="btn btn-blue" onclick="copyAndNext()" style="min-width:200px;">&#128203; 복사 &amp; SellConnect에 붙여넣기</button>';
+  h+='<button class="btn btn-outline" onclick="skipEntry()">건너뛰기 &rarr;</button>';
+  h+='</div>';
+  h+='<div class="exec-copied" id="copiedBadge">Copied!</div>';
+  h+='</div>';
+
+  h+='<div class="shortcut-hint"><kbd>Space</kbd> 또는 <kbd>Enter</kbd> 키를 눌러도 복사 &amp; 다음 단계로 넘어갑니다</div>';
+
+  h+='<div class="exec-queue">';
+  h+='<div class="exec-queue-title">실행 대기열</div>';
+  real.forEach((e,i)=>{
+    let cls='eq-item';
+    if(i<execIdx)cls+=' done';
+    else if(i===execIdx)cls+=' current';
+    else cls+=' pending';
+    h+='<div class="'+cls+'"><span class="eq-num">'+e.s+'</span><span class="eq-cmd">'+e.c+'</span></div>';
+  });
+  h+='</div>';
+
+  document.getElementById('execContainer').innerHTML=h;
+}
+
+function copyAndNext(){
+  const real=entries.filter(e=>!e.alt);
+  if(execIdx>=real.length)return;
+  const cmd=real[execIdx].c;
+  navigator.clipboard.writeText(cmd).then(()=>{
+    const badge=document.getElementById('copiedBadge');
+    if(badge){badge.classList.add('show');setTimeout(()=>{badge.classList.remove('show');},600);}
+    setTimeout(()=>{execIdx++;renderExec();},800);
+  });
+}
+
+function skipEntry(){execIdx++;renderExec();}
+
+document.addEventListener('keydown',function(e){
+  if(currentStep!==4)return;
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA')return;
+  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();copyAndNext();}
+  if(e.code==='ArrowRight'){e.preventDefault();skipEntry();}
+});
+</script>
+
+</body>
+</html>
