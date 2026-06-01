@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운임 자동 조회</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-shimmer"></div>
+  <h1>&#9992; 운임 자동 조회 - SELLCONNECT (1A)</h1>
+</div>
+
+<!-- Status Bar -->
+<div class="status-bar" id="statusBar">
+  <span class="status-dot disconnected" id="statusDot"></span>
+  <span id="statusText">SellConnect 연결 대기</span>
+</div>
+
+<!-- View: Form -->
+<div class="view visible" id="viewForm">
+  <div class="form-section">
+    <div class="row">
+      <div class="field">
+        <label>항공사</label>
+        <input type="text" id="airline" placeholder="LO" maxlength="2">
+      </div>
+      <div class="field">
+        <label>편도/왕복</label>
+        <select id="tripType" onchange="toggleReturn()">
+          <option value="RT">왕복</option>
+          <option value="OW">편도</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>출발지</label>
+        <input type="text" id="origin" placeholder="ICN" maxlength="3" value="ICN">
+      </div>
+      <div class="field">
+        <label>도착지</label>
+        <input type="text" id="dest" placeholder="WAW" maxlength="3">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>출발일</label>
+        <input type="date" id="depDate">
+      </div>
+      <div class="field" id="retDateWrap">
+        <label>귀국일</label>
+        <input type="date" id="retDate">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Class (1순위)</label>
+        <input type="text" id="cls1" placeholder="E" maxlength="1">
+      </div>
+      <div class="field">
+        <label>Class (2순위)</label>
+        <input type="text" id="cls2" placeholder="선택" maxlength="1">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>성 (Last)</label>
+        <input type="text" id="lname" placeholder="AN">
+      </div>
+      <div class="field">
+        <label>이름 (First)</label>
+        <input type="text" id="fname" placeholder="HARAM">
+      </div>
+      <div class="field" style="flex:0.5">
+        <label>성별</label>
+        <select id="title"><option value="MS">MS</option><option value="MR">MR</option></select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>핸드폰</label>
+        <input type="text" id="phone" placeholder="821040637407">
+      </div>
+      <div class="field">
+        <label>Account Code</label>
+        <input type="text" id="acctCode" placeholder="없으면 비워두세요">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>미래 발권일 (NEGO)</label>
+        <input type="date" id="negoDate">
+      </div>
+      <div class="field">
+        <label>Slack Webhook (알림)</label>
+        <input type="text" id="slackWebhook" placeholder="https://hooks.slack.com/...">
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-blue" id="btnGenerate">엔트리 생성 &rarr;</button>
+</div>
+
+<!-- View: Review -->
+<div class="view" id="viewReview">
+  <div class="section-title">생성된 엔트리</div>
+  <div class="entry-list" id="entryList"></div>
+  <div class="review-actions">
+    <button class="btn btn-outline" id="btnBack">&larr; 수정</button>
+    <button class="btn btn-green" id="btnExecute">&#9654; 자동 조회 실행</button>
+  </div>
+</div>
+
+<!-- View: Execution -->
+<div class="view" id="viewExec">
+  <div class="exec-progress" id="execProgress"></div>
+  <div class="exec-current-card" id="execCard"></div>
+  <div class="exec-log" id="execLog"></div>
+  <div class="exec-actions" id="execActions">
+    <button class="btn btn-outline" id="btnStop">&#9632; 중지</button>
+  </div>
+</div>
+
+<!-- View: Result -->
+<div class="view" id="viewResult">
+  <div class="result-header">
+    <span class="result-icon">&#10004;</span>
+    <h3>조회 완료!</h3>
+  </div>
+  <div class="result-body" id="resultBody"></div>
+  <button class="btn btn-blue" id="btnNewQuery">&#8634; 새 조회</button>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
